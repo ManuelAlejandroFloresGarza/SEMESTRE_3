@@ -73,3 +73,58 @@ class TallerMecanico:
             print("Nota registrada con éxito.")  # Imprime un mensaje de confirmación
         except ValueError:
             print("Error: El costo del servicio debe ser un número válido.")  # Maneja errores de valor
+
+    def consultar_por_periodo(self):
+        try:
+            while True:
+                print("\nConsultar por período:")
+                print("1. Por folio")
+                print("2. Por fecha de creación")
+                print("3. Regresar al menú principal")
+                opcion = input("Seleccione una opción (1/2/3): ")
+
+                if opcion == "1":
+                    folio_consulta = int(input("Ingrese el folio de la nota a consultar: "))  # Lee el folio a consultar
+                    nota_consulta = next((nota for nota in self.notas if nota.folio == folio_consulta), None)  # Busca la nota por folio
+                    if nota_consulta is None:
+                        print("La nota no se encuentra en el sistema.")  # Imprime un mensaje si la nota no se encuentra
+                    else:
+                        print(f"Folio: {nota_consulta.folio}, Fecha: {nota_consulta.fecha}, Cliente: {nota_consulta.cliente}, Monto: {nota_consulta.monto_total:.2f}")  # Imprime información de la nota
+                        print("Detalle de servicios:")
+                        for servicio in nota_consulta.servicios:
+                            print(f"  Servicio: {servicio[0]}, Costo: {servicio[1]:.2f}")  # Imprime detalles de los servicios
+                elif opcion == "2":
+                    fecha_inicial = input("Ingrese la fecha inicial (DD-MM-YYYY): ")  # Lee la fecha inicial
+                    fecha_final = input("Ingrese la fecha final (DD-MM-YYYY): ")  # Lee la fecha final
+
+                    notas_periodo = [nota for nota in self.notas if fecha_inicial <= nota.fecha <= fecha_final]  # Filtra las notas por fecha
+                    if not notas_periodo:
+                        print("No hay notas emitidas para el período indicado.")  # Imprime un mensaje si no hay notas en el período
+                    else:
+                        print("Notas en el período:")
+                    for nota in notas_periodo:
+                        print(f"Folio: {nota.folio}, Fecha: {nota.fecha}, Cliente: {nota.cliente}, Monto: {nota.monto_total:.2f}")  # Imprime información de las notas en el período
+                        print("Detalle de servicios:")
+                    for servicio in nota.servicios:
+                        print(f"  Servicio: {servicio[0]}, Costo: {servicio[1]:.2f}")  # Imprime detalles de los servicios
+                elif opcion == "3":
+                    break  # Regresar al menú principal
+                else:
+                    print("Opción no válida.")  # Imprime un mensaje si la opción no es válida
+        except ValueError:
+            print("Error: Ingrese un valor válido.")  # Maneja errores de valor
+
+    def cancelar_nota(self):
+        try:
+            folio_cancelar = int(input("Ingrese el folio de la nota a cancelar: "))  # Lee el folio de la nota a cancelar
+            nota_cancelar = next((nota for nota in self.notas if nota.folio == folio_cancelar), None)  # Busca la nota por folio
+            if nota_cancelar is None or nota_cancelar.cancelada:
+                print("La nota no está en el sistema o ya está cancelada.")  # Imprime un mensaje si la nota no se encuentra o ya está cancelada
+            else:
+                print(f"Folio: {nota_cancelar.folio}, Fecha: {nota_cancelar.fecha}, Cliente: {nota_cancelar.cliente}, Monto: {nota_cancelar.monto_total:.2f}")  # Imprime información de la nota a cancelar
+                confirmacion = input("¿Confirmar cancelación de la nota? (S/N): ")  # Pide confirmación para cancelar la nota
+                if confirmacion.lower() == 's':
+                    nota_cancelar.cancelada = True  # Cambia el estado de la nota a cancelada
+                    print("Nota cancelada.")  # Imprime un mensaje de confirmación
+        except ValueError:
+            print("Error: Ingrese un número de folio válido.")  # Maneja errores de valor
