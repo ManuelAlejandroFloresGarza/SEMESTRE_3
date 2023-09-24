@@ -107,3 +107,104 @@ class TallerMecanico:
             print("Nota registrada con éxito.")
         except ValueError:
             print("Error: El costo del servicio debe ser un número válido.")
+            def consultar_por_periodo(self):
+        try:
+            while True:
+                print("\nMenú de Consultas y Reportes:")  
+                print("1. Consulta por periodo")  
+                print("2. Consulta por folio")  
+                print("3. Consulta por cliente")
+                print("4. Regresar al menú principal")
+                opcion = input("Seleccione una opción (1/2/3/4): ")
+
+                if opcion == "1":
+                    while True:
+                        fecha_inicial = input("Ingrese la fecha inicial (DD-MM-YYYY): ")
+                        fecha_final = input("Ingrese la fecha final (DD-MM-YYYY): ")
+                        try:
+                            fecha_inicial = datetime.strptime(fecha_inicial, "%d-%m-%Y")
+                            fecha_final = datetime.strptime(fecha_final, "%d-%m-%Y")
+                            break
+                        except ValueError:
+                            print("Error: El formato de fecha es incorrecto. Debe ser DD-MM-YYYY.")
+
+                    notas_periodo = [nota for nota in self.notas if fecha_inicial <= datetime.strptime(nota.fecha, "%d-%m-%Y") <= fecha_final]
+                    if not notas_periodo:
+                        print("No hay notas emitidas para el período indicado.")
+                    else:
+                        print("Notas en el período:")
+                        for nota in notas_periodo:
+                            print(f"Folio: {nota.folio}, Fecha: {nota.fecha}, Cliente: {nota.cliente}, RFC: {nota.rfc}, Correo: {nota.correo}, Monto: {nota.monto_total:.2f}")
+                            print("Detalle de servicios:")
+                            for servicio in nota.servicios:
+                                print(f"  Servicio: {servicio[0]}, Costo: {servicio[1]:.2f}")
+                elif opcion == "2":
+                    folio_consulta = int(input("Ingrese el folio de la nota a consultar: "))
+                    nota_consulta = next((nota for nota in self.notas if nota.folio == folio_consulta), None)
+                    if nota_consulta is None:
+                        print("La nota no se encuentra en el sistema.")
+                    else:
+                        print(f"Folio: {nota_consulta.folio}, Fecha: {nota_consulta.fecha}, Cliente: {nota_consulta.cliente}, RFC: {nota_consulta.rfc}, Correo: {nota_consulta.correo}, Monto: {nota_consulta.monto_total:.2f}")
+                        print("Detalle de servicios:")
+                        for servicio in nota_consulta.servicios:
+                            print(f"  Servicio: {servicio[0]}, Costo: {servicio[1]:.2f}")
+                elif opcion == "3":
+                    self.consulta_por_cliente()
+                elif opcion == "4":
+                    break
+                else:
+                    print("Opción no válida.")
+        except ValueError:
+            print("Error: Ingrese un valor válido.")
+
+    def consulta_por_cliente(self):
+        
+        notas_por_cliente = {}
+        
+        
+        rfc_unicos = sorted(set(nota.rfc for nota in self.notas))
+        
+        
+        folio_consecutivo = 1
+        rfc_folio = {}
+        for rfc in rfc_unicos:
+            rfc_folio[rfc] = folio_consecutivo
+            folio_consecutivo += 1
+        
+        
+        for rfc, folio in rfc_folio.items():
+            print("\nLista de RFCs:")
+            print(f"Folio {folio}: {rfc}")
+        
+        salir = False  
+        
+        try:
+            while not salir:  
+                try:
+                    rfc_elegido = None
+                    folio_elegido = int(input("\nSeleccione el folio correspondiente al RFC a consultar: "))
+                    if folio_elegido in rfc_folio.values():
+                        for rfc, folio in rfc_folio.items():
+                            if folio == folio_elegido:
+                                rfc_elegido = rfc
+                                break
+                    else:
+                        print("Error: Ingrese un número de folio válido.")
+                except ValueError:
+                    print("Error: Folio no válido. Intente nuevamente.")
+
+                
+                if rfc_elegido is not None:
+                    notas_cliente = [nota for nota in self.notas if nota.rfc == rfc_elegido]
+                    
+                    if notas_cliente:
+                        print(f"Notas para el RFC {rfc_elegido}:")
+                        monto_promedio = sum(nota.monto_total for nota in notas_cliente) / len(notas_cliente)
+                        for nota in notas_cliente:
+                            print(f"Folio: {rfc_folio[rfc_elegido]}, Fecha: {nota.fecha}, Cliente: {nota.cliente}, RFC: {nota.rfc}, Correo: {nota.correo}, Monto: {nota.monto_total:.2f}")
+                            print("Detalle de servicios:")
+                            for servicio in nota.servicios:
+                                print(f"  Servicio: {servicio[0]}, Costo: {servicio[1]:.2f}")
+                        print(f"Monto promedio de las notas para el RFC {rfc_elegido}: {monto_promedio:.2f}")
+                        
+                        exportar_csv = input("¿Desea exportar esta información a un archivo CSV? (S/N): ")
