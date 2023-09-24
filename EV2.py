@@ -208,3 +208,136 @@ class TallerMecanico:
                         print(f"Monto promedio de las notas para el RFC {rfc_elegido}: {monto_promedio:.2f}")
                         
                         exportar_csv = input("¿Desea exportar esta información a un archivo CSV? (S/N): ")
+                        if exportar_csv.lower() == 's':
+                            
+                            directorio_actual = os.path.dirname(os.path.abspath(__file__))
+                            nombre_archivo = os.path.join(directorio_actual, f"{rfc_elegido}_{datetime.now().strftime('%Y%m%d')}.csv")
+                            
+                            with open(nombre_archivo, 'w', newline='') as archivo_csv:
+                                escritor_csv = csv.writer(archivo_csv)
+                                escritor_csv.writerow(['Folio', 'Fecha', 'Cliente', 'RFC', 'Correo', 'Monto Total'])
+                                for nota in notas_cliente:
+                                    escritor_csv.writerow([rfc_folio[rfc_elegido], nota.fecha, nota.cliente, nota.rfc, nota.correo, nota.monto_total])
+                            print(f"Los datos han sido exportados a {nombre_archivo}.")
+                            salir = True  
+                        else:
+                            break
+                    else:
+                        print(f"No hay notas registradas para el RFC {rfc_elegido}.")
+                else:
+                    print("Folio no válido. Intente nuevamente.")
+        except ValueError:
+            print("Error: Ingrese un valor válido para el folio.")
+    def cancelar_nota(self):
+        try:
+            folio_cancelar = int(input("Ingrese el folio de la nota a cancelar: "))
+            nota_cancelar = next((nota for nota in self.notas if nota.folio == folio_cancelar), None)
+            if nota_cancelar is None or nota_cancelar.cancelada:
+                print("La nota no está en el sistema o ya está cancelada.")
+            else:
+                print(f"Folio: {nota_cancelar.folio}, Fecha: {nota_cancelar.fecha}, Cliente: {nota_cancelar.cliente}, RFC: {nota_cancelar.rfc}, Correo: {nota_cancelar.correo}, Monto: {nota_cancelar.monto_total:.2f}")
+                confirmacion = input("¿Confirmar cancelación de la nota? (S/N): ")
+                if confirmacion.lower() == 's':
+                    nota_cancelar.cancelada = True
+                    self.notas.remove(nota_cancelar)
+                    self.notas_canceladas.append(nota_cancelar)
+                    print("Nota cancelada y movida a notas canceladas.")
+        except ValueError:
+            print("Error: Ingrese un número de folio válido.")
+
+    def recuperar_nota(self):
+        try:
+            if not self.notas_canceladas:
+                print("No hay notas canceladas en el sistema.")
+            else:
+                print("Notas canceladas:")
+                for nota in self.notas_canceladas:
+                    print(f"Folio: {nota.folio}, Fecha: {nota.fecha}, Cliente: {nota.cliente}")
+
+                folio_recuperar = int(input("Ingrese el folio de la nota a recuperar (o 0 para cancelar): "))
+                if folio_recuperar != 0:
+                    nota_recuperar = next((nota for nota in self.notas_canceladas if nota.folio == folio_recuperar), None)
+                    if nota_recuperar is None:
+                        print("La nota no está en el sistema.")
+                    else:
+                        print(f"Folio: {nota_recuperar.folio}, Fecha: {nota_recuperar.fecha}, Cliente: {nota_recuperar.cliente}")
+                        confirmacion = input("¿Confirmar recuperación de la nota? (S/N): ")
+                        if confirmacion.lower() == 's':
+                            nota_recuperar.cancelada = False
+                            self.notas_canceladas.remove(nota_recuperar)
+                            self.notas.append(nota_recuperar)
+                            print("Nota recuperada y movida de vuelta a notas activas.")
+        except ValueError:
+            print("Error: Ingrese un número de folio válido.")
+
+    def ejecutar(self):
+        while True:
+            print("\nMenú Principal:")
+            print("1. Registrar una nota")
+            print("2. Consultas y Reportes") 
+            print("3. Cancelar una nota")
+            print("4. Recuperar una nota")
+            print("5. Salir")
+
+            opcion = input("Seleccione una opción (1/2/3/4/5): ")
+
+            if opcion == "1":
+                self.registrar_nota()
+            elif opcion == "2":
+                self.consultar_por_periodo()
+            elif opcion == "3":
+                self.cancelar_nota()
+            elif opcion == "4":
+                self.recuperar_nota()
+            elif opcion == "5":
+                confirmacion = input("¿Está seguro de que desea salir del programa? (S/N): ")
+                if confirmacion.lower() == 's':
+                    print("\nSaliendo del programa. ¡Hasta luego!")
+                    break
+                elif confirmacion.lower() == 'n':
+                    continue
+                else:
+                    print("Opción no válida. Por favor, seleccione 'S' para salir o 'N' para continuar.")
+            else:
+                print("Opción no válida. Por favor, seleccione una opción válida.")
+                
+    def guardar_estado(self):
+        try:
+            with open("estado_de_aplicacion.csv", mode="w", newline="") as file:
+                writer = csv.writer(file)
+                
+                for nota in self.notas:
+                    writer.writerow([nota.folio, nota.fecha, nota.cliente, nota.rfc, nota.correo, nota.monto_total, nota.cancelada])
+                
+                for nota in self.notas_canceladas:
+                    writer.writerow([nota.folio, nota.fecha, nota.cliente, nota.rfc, nota.correo, nota.monto_total, True])
+            print("Estado de la aplicación guardado con éxito.")
+        except Exception as e:
+            print(f"Error al guardar el estado de la aplicación: {e}")
+
+    def cargar_estado(self):
+        try:
+            with open("estado_de_aplicacion.csv", mode="r") as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    folio, fecha, cliente, rfc, correo, monto_total, cancelada = row
+                    if cancelada == "True":
+                        nota = Nota(int(folio), fecha, cliente, rfc, correo)
+                        nota.monto_total = float(monto_total)
+                        nota.cancelada = True
+                        self.notas_canceladas.append(nota)
+                    else:
+                        nota = Nota(int(folio), fecha, cliente, rfc, correo)
+                        nota.monto_total = float(monto_total)
+                        self.notas.append(nota)
+            print("Estado de la aplicación cargado con éxito.")
+        except FileNotFoundError:
+            print("No se encontró un archivo de estado anterior. Se parte de un estado inicial vacío.")
+        except Exception as e:
+            print(f"Error al cargar el estado de la aplicación: {e}")
+
+if __name__ == "__main__":
+    taller = TallerMecanico()
+    taller.cargar_estado()  
+    taller.ejecutar()
+    taller.guardar_estado()  
