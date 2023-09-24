@@ -107,7 +107,7 @@ class TallerMecanico:
             print("Nota registrada con éxito.")
         except ValueError:
             print("Error: El costo del servicio debe ser un número válido.")
-            def consultar_por_periodo(self):
+    def consultar_por_periodo(self):
         try:
             while True:
                 print("\nMenú de Consultas y Reportes:")  
