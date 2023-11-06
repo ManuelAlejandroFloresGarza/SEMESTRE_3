@@ -652,3 +652,297 @@ def agregar_servicio():
             print(f"Servicio agregado exitosamente con clave {claveservicio[0]}")
         except Exception as e:
             print(f"Error al agregar el servicio: {e}")
+def consultasreportes_servicios():
+    while True:
+        print("1. Búsqueda por clave de servicio")
+        print("2. Búsqueda por nombre de servicio")
+        print("3. Listado de servicios")
+        print("4. Salir al menú Servicios")
+        opcion = input("Seleccione una opción: ")
+        if opcion == "1":    # Búsqueda por clave de servicio
+            Busqueda_clave_servicio()
+        elif opcion == "2":  # Búsqueda por nombre de servicio
+            Busqueda_nombre_servicio()
+        elif opcion == "3":  # Listado de servicios
+            Listado_servicios()
+        elif opcion == "4":  # Salir al menú Servicios
+            print("Saliendo del programa. ¡Hasta luego!")
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def Busqueda_clave_servicio():
+    # Conectarse a la base de datos
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idservicio, nombreservicio FROM Servicios")
+            servicios = cursor.fetchall()
+
+            if not servicios:
+                print("No hay servicios registrados en la base de datos.")
+                return
+
+            # Mostrar un listado tabular de claves y nombres de servicio
+            print("Listado de servicios:")
+            print("Clave  |  Nombre del Servicio")
+            for servicio in servicios:
+                print(f"{servicio[0]:<6} | {servicio[1]}")
+
+            # Solicitar al usuario que ingrese la clave del servicio a consultar
+            while True:
+                try:
+                    clave_servicio = int(input("Ingrese la clave del servicio que desea consultar: "))
+                    if clave_servicio in [servicio[0] for servicio in servicios]:
+                        break
+                    else:
+                        print("Clave no válida. Por favor, ingrese una clave válida.")
+                except ValueError:
+                    print("Error: La clave debe ser un número válido.")
+
+            # Recuperar los detalles del servicio seleccionado
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE idservicio = ?", (clave_servicio,))
+            servicio_detalle = cursor.fetchone()
+
+            # Mostrar los detalles del servicio
+            print("\nDetalle del servicio:")
+            print(f"Clave del Servicio: {servicio_detalle[0]}")
+            print(f"Nombre del Servicio: {servicio_detalle[1]}")
+            print(f"Costo del Servicio: {servicio_detalle[2]:.2f}")
+
+        except sqlite3.Error as e:
+            print(f"Error al buscar el servicio: {e}")
+
+def Busqueda_nombre_servicio():
+    # Conectarse a la base de datos
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            nombre_servicio_buscar = input("Ingrese el nombre del servicio a buscar: ").strip().lower()
+
+            # Realizar una consulta insensible a mayúsculas y minúsculas
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE LOWER(nombreservicio) = ?", (nombre_servicio_buscar,))
+            servicio_detalle = cursor.fetchone()
+
+            if servicio_detalle:
+                # Mostrar los detalles del servicio encontrado
+                print("\nDetalle del servicio encontrado:")
+                print(f"Clave del Servicio: {servicio_detalle[0]}")
+                print(f"Nombre del Servicio: {servicio_detalle[1]}")
+                print(f"Costo del Servicio: {servicio_detalle[2]:.2f}")
+            else:
+                print(f"No se encontró un servicio con el nombre '{nombre_servicio_buscar}'.")
+
+        except sqlite3.Error as e:
+            print(f"Error al buscar el servicio: {e}")
+
+def Listado_servicios():
+    while True:
+        print("\nListado de servicios:")
+        print("1. Ordenado por clave")
+        print("2. Ordenado por nombre de servicio")
+        print("3. Regresar al menú anterior")
+        opcion = input("Seleccione una opción: ")
+
+        if opcion == "1":  # Listado de servicios ordenado por clave
+            ordenar_servicios_por_clave()
+        elif opcion == "2":  # Listado de servicios ordenado por nombre
+            ordenar_servicios_por_nombre()
+        elif opcion == "3":  # Volver al menú de consultas y reportes de servicios
+            print("Volviendo al menú de consultas y reportes de servicios.")
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def ordenar_servicios_por_clave():
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios ORDER BY idservicio")
+            servicios = cursor.fetchall()
+            if servicios:
+                print("\nListado de servicios ordenado por clave:")
+                for servicio in servicios:
+                    print(f"Clave: {servicio[0]}, Nombre: {servicio[1]}, Costo: {servicio[2]:.2f}")
+
+                # Preguntar al usuario si desea exportar el reporte
+                exportar_reporte_servicios(servicios, "ServiciosPorClave")
+
+            else:
+                print("No hay servicios registrados.")
+        except sqlite3.Error as e:
+            print(f"Error al obtener el listado de servicios: {e}")
+
+def ordenar_servicios_por_nombre():
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios ORDER BY UPPER(nombreservicio)")
+            servicios = cursor.fetchall()
+            if servicios:
+                print("\nListado de servicios ordenado por nombre:")
+                for servicio in servicios:
+                    print(f"Clave: {servicio[0]}, Nombre: {servicio[1]}, Costo: {servicio[2]:.2f}")
+
+                # Preguntar al usuario si desea exportar el reporte
+                exportar_reporte_servicios(servicios, "ServiciosPorNombre")
+            else:
+                print("No hay servicios registrados.")
+        except sqlite3.Error as e:
+            print(f"Error al obtener el listado de servicios: {e}")
+
+def exportar_reporte_servicios(data, report_name):
+    while True:
+        opcion_exportar = input("\n¿Desea exportar el reporte a CSV, Excel o regresar al menú de reportes? (CSV/Excel/Regresar): ").strip().lower()
+        if opcion_exportar == "csv":
+            exportar_reporte_servicios_csv(data, report_name)
+            break
+        elif opcion_exportar == "excel":
+            exportar_reporte_servicios_excel(data, report_name)
+            break
+        elif opcion_exportar == "regresar":
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def exportar_reporte_servicios_csv(data, report_name):
+    filename = f"{report_name}_{obtener_fecha_actual()}.csv"
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Clave", "Nombre", "Costo"])
+        for servicio in data:
+            writer.writerow(servicio)
+    print(f"El reporte ha sido exportado como {filename}")
+
+def exportar_reporte_servicios_excel(data, report_name):
+    filename = f"{report_name}_{obtener_fecha_actual()}.xlsx"
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = report_name
+
+    bold = openpyxl.styles.Font(bold=True)
+    bold_style = openpyxl.styles.NamedStyle(name="bold")
+    bold_style.font = bold
+
+    worksheet['A1'] = "Clave"
+    worksheet['B1'] = "Nombre"
+    worksheet['C1'] = "Costo"
+
+    worksheet['A1'].style = bold_style
+    worksheet['B1'].style = bold_style
+    worksheet['C1'].style = bold_style
+
+    row = 2
+
+    for servicio in data:
+        worksheet.cell(row=row, column=1, value=servicio[0])
+        worksheet.cell(row=row, column=2, value=servicio[1])
+        worksheet.cell(row=row, column=3, value=servicio[2])
+        row += 1
+
+    workbook.save(filename)
+    print(f"El reporte ha sido exportado como {filename}")
+
+def obtener_fecha_actual():
+    return datetime.now()
+
+def validar_fecha(fecha):
+    try:
+        fecha_ingresada = datetime.strptime(fecha, '%d/%m/%Y')
+        fecha_actual = obtener_fecha_actual()
+        if fecha_ingresada <= fecha_actual:
+            return True
+        else:
+            return False
+    except ValueError:
+        return False
+
+# Función para generar una clave aleatoria de 6 caracteres compuesta por letras y dígitos
+def generar_clave_aleatoria():
+    caracteres = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(caracteres) for _ in range(6))
+
+# Función para validar que el rfc tenga el formato correcto
+def validar_rfc(rfc):
+    # Patrones de expresiones regulares para RFC de personas físicas y morales
+    rfc_fisica_pattern = r'^[A-Z]{4}\d{2}(0[1-9]|1[0-2])(0[1-9]|[1-2]\d|3[0-1])[A-Z\d]{3}$'
+    rfc_moral_pattern = r'^[A-Z]{3}\d{2}(0[1-9]|1[0-2])(0[1-9]|[1-2]\d|3[0-1])[A-Z\d]{3}$'
+    if re.match(rfc_fisica_pattern, rfc) or re.match(rfc_moral_pattern, rfc):
+        return True
+    else:
+        return False
+
+# Función para validar que el correo tenga el formato correcto
+def validar_correo(correo):
+    # Patrón de expresión regular para validar un correo electrónico
+    correo_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if re.match(correo_pattern, correo):
+        return True
+    else:
+        return False
+    
+# Función para comprobar si una clave existe en la tabla especificada
+def clavecliente_existe_(tabla, clave):
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"SELECT 1 FROM {tabla} WHERE idcliente = ?", (clave))
+            return True
+        except sqlite3.Error:
+            return False
+
+        
+def claveservicio_existe_(tabla, clave):
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"SELECT 1 FROM {tabla} WHERE {tabla}idservicio = ?", (clave,))
+            return cursor.fetchone() is not None
+        except sqlite3.Error:
+            return False
+        
+def mostrar_registros(tabla):
+    print(f"\nRegistros de {tabla}")
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"SELECT * FROM {tabla}")
+            rows = cursor.fetchall()
+            for row in rows:
+                print(row)
+        except sqlite3.Error as e:
+            print(f"Error al mostrar los registros de la tabla {tabla}: {e}")
+
+# Función main que se ejecuta al iniciar el programa después de crear las tablas
+def main():
+    while True:
+        mostrar_menu_principal()
+        opcion = input("Seleccione una opción: ")
+        if opcion == "1":    # Opción para submenú Notas
+            Notas()
+        elif opcion == "2":  # Opción para submenú Clientes
+            Clientes()
+        elif opcion == "3":  # Opción para submenú Servicios
+            Servicios()
+        elif opcion == "4":  # Opción para salir del programa
+            confirmacion = input("¿Está seguro de que desea salir del programa? (Sí/No): ").strip().lower()
+            if confirmacion == "si" or confirmacion == "sí":
+                print("Saliendo del programa. ¡Hasta luego!")
+                break
+            elif confirmacion == "no":
+                print("Regresando al menú principal.")
+            else:
+                print("Respuesta no válida. Por favor, seleccione 'Sí' o 'No'.")
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def mostrar_menu_principal():
+    print("\nMenú Principal:")
+    print("1. Notas")
+    print("2. Clientes")
+    print("3. Servicios")
+    print("4. Salir")
+
+if __name__ == "__main__":
+    crear_tablas()
+    main()
