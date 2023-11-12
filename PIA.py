@@ -1327,3 +1327,462 @@ def Busqueda_nombre_servicio():
 
             print(f"Error al buscar el servicio: {e}")
 
+def Listado_servicios():
+    while True:
+        print("\nListado de servicios:")
+        print("1. Ordenado por clave")
+        print("2. Ordenado por nombre de servicio")
+        print("3. Regresar al menú anterior")
+        opcion = input("Seleccione una opción: ")
+
+        if opcion == "1":  
+            ordenar_servicios_por_clave()
+        elif opcion == "2":  
+            ordenar_servicios_por_nombre()
+        elif opcion == "3": 
+            print("Volviendo al menú de consultas y reportes de servicios.")
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def ordenar_servicios_por_clave():
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE status = 1 ORDER BY idservicio")
+            servicios = cursor.fetchall()
+            if servicios:
+                print("\nListado de servicios ordenado por clave:")
+                for servicio in servicios:
+                    print(f"Clave: {servicio[0]}, Nombre: {servicio[1]}, Costo: {servicio[2]:.2f}")
+
+                exportar_reporte_servicios(servicios, "ServiciosPorClave")
+
+            else:
+                print("No hay servicios registrados.")
+        except sqlite3.Error as e:
+            print(f"Error al obtener el listado de servicios: {e}")
+
+def ordenar_servicios_por_nombre():
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE status = 1 ORDER BY UPPER(nombreservicio)")
+            servicios = cursor.fetchall()
+            if servicios:
+                print("\nListado de servicios ordenado por nombre:")
+                for servicio in servicios:
+                    print(f"Clave: {servicio[0]}, Nombre: {servicio[1]}, Costo: {servicio[2]:.2f}")
+
+                exportar_reporte_servicios(servicios, "ServiciosPorNombre")
+            else:
+                print("No hay servicios registrados.")
+        except sqlite3.Error as e:
+            print(f"Error al obtener el listado de servicios: {e}")
+
+def exportar_reporte_servicios(data, report_name):
+    while True:
+        opcion_exportar = input("\n¿Desea exportar el reporte a CSV, Excel o regresar al menú de reportes? (CSV/Excel/Regresar): ").strip().lower()
+        if opcion_exportar == "csv":
+            exportar_reporte_servicios_csv(data, report_name)
+            break
+        elif opcion_exportar == "excel":
+            exportar_reporte_servicios_excel(data, report_name)
+            break
+        elif opcion_exportar == "regresar":
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def exportar_reporte_servicios_csv(data, report_name):
+    filename = f"{report_name}_{obtener_fecha_actual()}.csv"
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Clave", "Nombre", "Costo"])
+        for servicio in data:
+            writer.writerow(servicio)
+    print(f"El reporte ha sido exportado como {filename}")
+
+def exportar_reporte_servicios_excel(data, report_name):
+    filename = f"{report_name}_{obtener_fecha_actual()}.xlsx"
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = report_name
+
+    bold = openpyxl.styles.Font(bold=True)
+    bold_style = openpyxl.styles.NamedStyle(name="bold")
+    bold_style.font = bold
+
+    worksheet['A1'] = "Clave"
+    worksheet['B1'] = "Nombre"
+    worksheet['C1'] = "Costo"
+
+    worksheet['A1'].style = bold_style
+    worksheet['B1'].style = bold_style
+    worksheet['C1'].style = bold_style
+
+    row = 2
+
+    for servicio in data:
+        worksheet.cell(row=row, column=1, value=servicio[0])
+        worksheet.cell(row=row, column=2, value=servicio[1])
+        worksheet.cell(row=row, column=3, value=servicio[2])
+        row += 1
+
+    workbook.save(filename)
+    print(f"El reporte ha sido exportado como {filename}")
+
+def estadisticas():
+    while True:
+        mostrar_menu_estadisticas()
+        opcion = input("Seleccione una opción: ")
+
+        if opcion == "1":
+            servicios_mas_prestados()
+        elif opcion == "2":
+            clientes_con_mas_notas()
+        elif opcion == "3":
+            promedio_montos_notas()
+        elif opcion == "4":
+            print("Volviendo al menú principal.")
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def servicios_mas_prestados():
+    print("\nReporte de Servicios Más Prestados")
+
+    try:
+        cantidad_servicios = int(input("Ingrese la cantidad de servicios más prestados a identificar: "))
+        if cantidad_servicios <= 0:
+            print("La cantidad de servicios debe ser un número positivo.")
+            return
+    except ValueError:
+        print("Error: La cantidad de servicios debe ser un número entero.")
+        return
+
+    fecha_inicial = input("Ingrese la fecha inicial del período a reportar (mm/dd/yyyy): ")
+    fecha_final = input("Ingrese la fecha final del período a reportar (mm/dd/yyyy): ")
+
+    if not (validar_fechaestadistica(fecha_inicial) and validar_fechaestadistica(fecha_final)):
+        print("Error: Las fechas ingresadas no tienen el formato correcto o la fecha final es anterior a la fecha inicial.")
+        return
+
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idservicio FROM Notas WHERE fecha BETWEEN ? AND ?", (fecha_inicial, fecha_final))
+            servicios_ids = cursor.fetchall()
+
+            if not servicios_ids:
+                print("No hay servicios registrados en el período especificado.")
+                return
+
+            contador_servicios = Counter(servicio[0] for servicio in servicios_ids)
+
+            servicios_mas_prestados = contador_servicios.most_common(cantidad_servicios)
+
+            print("\nReporte de Servicios Más Prestados:")
+            print("{:<30} {:<10}".format("Nombre del Servicio", "Veces Prestado"))
+            for servicio_id, cantidad in servicios_mas_prestados:
+                cursor.execute("SELECT nombreservicio FROM Servicios WHERE idservicio = ?", (servicio_id,))
+                nombre_servicio = cursor.fetchone()[0]
+                print("{:<30} {:<10}".format(nombre_servicio, cantidad))
+
+            while True:
+                opcion_exportar = input("\n¿Desea exportar el reporte a CSV, Excel o regresar al menú de estadísticas? (CSV/Excel/Regresar): ").strip().lower()
+                if opcion_exportar == "csv":
+                    exportar_reporte_servicios_mas_prestados(conn, servicios_mas_prestados, fecha_inicial, fecha_final, "CSV")
+                    break
+                elif opcion_exportar == "excel":
+                    exportar_reporte_servicios_mas_prestados(conn, servicios_mas_prestados, fecha_inicial, fecha_final, "Excel")
+                    break
+                elif opcion_exportar == "regresar":
+                    break
+                else:
+                    print("Opción no válida. Por favor, seleccione una opción válida.")
+        except sqlite3.Error as e:
+            print(f"Error al generar el reporte de servicios más prestados: {e}")
+
+def exportar_reporte_servicios_mas_prestados(conn, data, fecha_inicial, fecha_final, format):
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        fecha_inicial_str = datetime.strptime(fecha_inicial, "%m/%d/%Y").strftime("%m_%d_%Y")
+        fecha_final_str = datetime.strptime(fecha_final, "%m/%d/%Y").strftime("%m_%d_%Y")
+        filename = f"ReporteServiciosMasPrestados_{fecha_inicial_str}_{fecha_final_str}.{format.lower()}"
+
+        if format.lower() == "csv":
+            with open(filename, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Nombre del Servicio", "Veces Prestado"])
+                for servicio_id, cantidad in data:
+                    cursor.execute("SELECT nombreservicio FROM Servicios WHERE idservicio = ?", (servicio_id,))
+                    nombre_servicio = cursor.fetchone()[0]
+                    writer.writerow([nombre_servicio, cantidad])
+            print(f"El reporte ha sido exportado como {filename}")
+        elif format.lower() == "excel":
+            workbook = openpyxl.Workbook()
+            worksheet = workbook.active
+            worksheet.title = "ServiciosMasPrestados"
+
+            bold = openpyxl.styles.Font(bold=True)
+            bold_style = openpyxl.styles.NamedStyle(name="bold")
+            bold_style.font = bold
+
+            worksheet['A1'] = "Nombre del Servicio"
+            worksheet['B1'] = "Veces Prestado"
+
+            worksheet['A1'].style = bold_style
+            worksheet['B1'].style = bold_style
+
+            row = 2
+
+            for servicio_id, cantidad in data:
+                cursor.execute("SELECT nombreservicio FROM Servicios WHERE idservicio = ?", (servicio_id,))
+                nombre_servicio = cursor.fetchone()[0]
+                worksheet.cell(row=row, column=1, value=nombre_servicio)
+                worksheet.cell(row=row, column=2, value=cantidad)
+                row += 1
+
+            workbook.save(filename)
+            print(f"El reporte ha sido exportado como {filename}")
+
+def clientes_con_mas_notas():
+    print("\nReporte de Clientes con Más Notas")
+
+    try:
+        cantidad_clientes = int(input("Ingrese la cantidad de clientes con más notas a identificar: "))
+        if cantidad_clientes <= 0:
+            print("La cantidad de clientes debe ser un número positivo.")
+            return
+    except ValueError:
+        print("Error: La cantidad de clientes debe ser un número entero.")
+        return
+
+    fecha_inicial = input("Ingrese la fecha inicial del período a reportar (mm/dd/yyyy): ")
+    fecha_final = input("Ingrese la fecha final del período a reportar (mm/dd/yyyy): ")
+
+    if not (validar_fechaestadistica(fecha_inicial) and validar_fechaestadistica(fecha_final)):
+        print("Error: Las fechas ingresadas no tienen el formato correcto o la fecha final es anterior a la fecha inicial.")
+        return
+
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idcliente FROM Notas WHERE fecha BETWEEN ? AND ?", (fecha_inicial, fecha_final))
+            clientes_ids = cursor.fetchall()
+
+            if not clientes_ids:
+                print("No hay clientes registrados en el período especificado.")
+                return
+
+            contador_clientes = Counter(cliente[0] for cliente in clientes_ids)
+
+            clientes_con_mas_notas = contador_clientes.most_common(cantidad_clientes)
+
+            print("\nReporte de Clientes con Más Notas:")
+            print("{:<30} {:<10}".format("Nombre del Cliente", "Notas Prestadas"))
+            for cliente_id, cantidad in clientes_con_mas_notas:
+                cursor.execute("SELECT nombrecliente FROM Clientes WHERE idcliente = ?", (cliente_id,))
+                nombre_cliente = cursor.fetchone()[0]
+                print("{:<30} {:<10}".format(nombre_cliente, cantidad))
+
+            while True:
+                opcion_exportar = input("\n¿Desea exportar el reporte a CSV, Excel o regresar al menú de estadísticas? (CSV/Excel/Regresar): ").strip().lower()
+                if opcion_exportar == "csv":
+                    exportar_reporte_clientes_con_mas_notas(conn, clientes_con_mas_notas, fecha_inicial, fecha_final, "CSV")
+                    break
+                elif opcion_exportar == "excel":
+                    exportar_reporte_clientes_con_mas_notas(conn, clientes_con_mas_notas, fecha_inicial, fecha_final, "Excel")
+                    break
+                elif opcion_exportar == "regresar":
+                    break
+                else:
+                    print("Opción no válida. Por favor, seleccione una opción válida.")
+        except sqlite3.Error as e:
+            print(f"Error al generar el reporte de clientes con más notas: {e}")
+
+def exportar_reporte_clientes_con_mas_notas(conn, data, fecha_inicial, fecha_final, format):
+    fecha_inicial_str = datetime.strptime(fecha_inicial, "%m/%d/%Y").strftime("%m_%d_%Y")
+    fecha_final_str = datetime.strptime(fecha_final, "%m/%d/%Y").strftime("%m_%d_%Y")
+    filename = f"ReporteClientesConMasNotas_{fecha_inicial_str}_{fecha_final_str}.{format.lower()}"
+
+    cursor = conn.cursor()
+
+    if format.lower() == "csv":
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Nombre del Cliente", "Notas Prestadas"])
+            for cliente_id, cantidad in data:
+                cursor.execute("SELECT nombrecliente FROM Clientes WHERE idcliente = ?", (cliente_id,))
+                nombre_cliente = cursor.fetchone()[0]
+                writer.writerow([nombre_cliente, cantidad])
+        print(f"El reporte ha sido exportado como {filename}")
+    elif format.lower() == "excel":
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = "ClientesConMasNotas"
+
+        bold = openpyxl.styles.Font(bold=True)
+        bold_style = openpyxl.styles.NamedStyle(name="bold")
+        bold_style.font = bold
+
+        worksheet['A1'] = "Nombre del Cliente"
+        worksheet['B1'] = "Notas Prestadas"
+
+        worksheet['A1'].style = bold_style
+        worksheet['B1'].style = bold_style
+
+        row = 2
+
+        for cliente_id, cantidad in data:
+            cursor.execute("SELECT nombrecliente FROM Clientes WHERE idcliente = ?", (cliente_id,))
+            nombre_cliente = cursor.fetchone()[0]
+            worksheet.cell(row=row, column=1, value=nombre_cliente)
+            worksheet.cell(row=row, column=2, value=cantidad)
+            row += 1
+
+        workbook.save(filename)
+        print(f"El reporte ha sido exportado como {filename}")
+
+def promedio_montos_notas():
+    try:
+        with sqlite3.connect("taller.db") as conn:
+            cursor = conn.cursor()
+
+            fecha_inicial = input("Ingrese la fecha inicial del período a reportar (mm/dd/yyyy): ")
+            fecha_final = input("Ingrese la fecha final del período a reportar (mm/dd/yyyy): ")
+
+            if not (validar_fechaestadistica(fecha_inicial) and validar_fechaestadistica(fecha_final)):
+                print("Error: Las fechas ingresadas no tienen el formato correcto o la fecha final es anterior a la fecha inicial.")
+                return
+
+            cursor.execute("""
+                SELECT AVG(s.costoservicio) AS promedio_precios
+                FROM Servicios s
+                WHERE s.idservicio IN (
+                    SELECT n.idservicio
+                    FROM Notas n
+                    WHERE n.fecha BETWEEN ? AND ?
+                )
+            """, (fecha_inicial, fecha_final))
+
+            promedio_precios = cursor.fetchone()[0]
+
+            if promedio_precios is not None:
+                print(f"\nEl promedio de los precios de los servicios para el período especificado es: ${promedio_precios:.2f}")
+            else:
+                print("No hay servicios registrados en el período especificado.")
+
+    except sqlite3.Error as e:
+        print(f"Error al calcular el promedio de los precios de los servicios: {e}")
+
+def obtener_fecha_actual():
+    return datetime.now()
+
+def validar_fechaestadistica(fecha):
+    try:
+        datetime.strptime(fecha, "%m/%d/%Y")
+        return True
+    except ValueError:
+        return False
+
+
+def validar_fecha(fecha):
+    try:
+        fecha_ingresada = datetime.strptime(fecha, '%d/%m/%Y')
+        fecha_actual = obtener_fecha_actual()
+        if fecha_ingresada <= fecha_actual:
+            return True
+        else:
+            return False
+    except ValueError:
+        return False
+
+def generar_clave_aleatoria():
+    caracteres = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(caracteres) for _ in range(6))
+
+def validar_rfc(rfc):
+    rfc_fisica_pattern = r'^[A-Z]{4}\d{2}(0[1-9]|1[0-2])(0[1-9]|[1-2]\d|3[0-1])[A-Z\d]{3}$'
+    rfc_moral_pattern = r'^[A-Z]{3}\d{2}(0[1-9]|1[0-2])(0[1-9]|[1-2]\d|3[0-1])[A-Z\d]{3}$'
+    if re.match(rfc_fisica_pattern, rfc) or re.match(rfc_moral_pattern, rfc):
+        return True
+    else:
+        return False
+
+def validar_correo(correo):
+    correo_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if re.match(correo_pattern, correo):
+        return True
+    else:
+        return False
+    
+def clavecliente_existe_(tabla, clave):
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"SELECT 1 FROM {tabla} WHERE idcliente = ?", (clave))
+            return True
+        except sqlite3.Error:
+            return False
+
+        
+def claveservicio_existe_(tabla, clave):
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"SELECT 1 FROM {tabla} WHERE {tabla}idservicio = ?", (clave,))
+            return cursor.fetchone() is not None
+        except sqlite3.Error:
+            return False
+        
+def mostrar_registros(tabla):
+    print(f"\nRegistros de {tabla}")
+    with sqlite3.connect("taller.db") as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"SELECT * FROM {tabla}")
+            rows = cursor.fetchall()
+            for row in rows:
+                print(row)
+        except sqlite3.Error as e:
+            print(f"Error al mostrar los registros de la tabla {tabla}: {e}")
+
+
+def main():
+    while True:
+        mostrar_menu_principal()
+        opcion = input("Seleccione una opción: ")
+        if opcion == "1":    
+            Notas()
+        elif opcion == "2":  
+            Clientes()
+        elif opcion == "3":  
+            Servicios()
+        elif opcion == "4":  
+            estadisticas()
+        elif opcion == "5":  
+            confirmacion = input("¿Está seguro de que desea salir del programa? (Sí/No): ").strip().lower()
+            if confirmacion == "si" or confirmacion == "sí":
+                print("Saliendo del programa. ¡Hasta luego!")
+                break
+            elif confirmacion == "no":
+                print("Regresando al menú principal.")
+            else:
+                print("Respuesta no válida. Por favor, seleccione 'Sí' o 'No'.")
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+def mostrar_menu_principal():
+    print("\nMenú Principal:")
+    print("1. Notas")
+    print("2. Clientes")
+    print("3. Servicios")
+    print("4. Estadísticas")
+    print("5. Salir")
+
+if __name__ == "__main__":
+    crear_tablas()
+    main()
+
