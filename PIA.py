@@ -449,3 +449,881 @@ def Clientes():
         else:
             print("Opción no válida. Por favor, seleccione una opción válida.")
 
+def agregar_cliente():
+
+    while True:
+
+        nombre = input("Ingrese el nombre completo del cliente: ")
+
+        if nombre.strip(): 
+
+            break
+
+        else:
+
+            print("El nombre no puede estar en blanco. Por favor, ingréselo nuevamente.") 
+
+    while True:
+
+        rfc = input("Ingrese el RFC del cliente: ")
+
+        if validar_rfc(rfc):
+
+            print("RFC válido.")
+
+            break  
+
+        else:
+
+            print("Error: el RFC no tiene un formato válido. Intente de nuevo.")
+
+    while True:
+
+        correo = input("Ingrese la dirección de correo electrónico: ")
+
+        if validar_correo(correo):
+
+            print("Correo electrónico válido.")
+
+            break 
+
+        else:
+
+            print("Error: la dirección de correo electrónico no tiene un formato válido.")
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+        try:
+
+            cursor.execute("INSERT INTO Clientes (nombrecliente, rfccliente, correocliente) VALUES (?, ?, ?)", (nombre, rfc, correo))
+
+            conn.commit()
+
+            cursor.execute("SELECT idcliente FROM Clientes WHERE idcliente = (SELECT MAX(idcliente) FROM Clientes)")
+
+            clavecliente = cursor.fetchone()
+
+            print(f"Cliente agregado exitosamente con clave {clavecliente[0]}")
+
+        except Exception as e:
+
+            print(f"Error al agregar el servicio: {e}")
+
+def cancelar_cliente():
+
+    while True:
+
+        try:
+
+            clave_cliente = int(input("Ingrese la clave del cliente que desea cancelar: "))
+
+        except ValueError:
+
+            print("Error: La clave del cliente debe ser un número válido.")
+
+            continue
+
+
+
+        with sqlite3.connect("taller.db") as conn:
+
+            cursor = conn.cursor()
+
+
+
+            cursor.execute("SELECT * FROM Clientes WHERE idcliente = ? AND status = 1", (clave_cliente,))
+
+            cliente = cursor.fetchone()
+
+
+
+            if cliente:
+
+                print("Detalle del cliente a cancelar:")
+
+                print(f"Clave del cliente: {cliente[0]}")
+
+                print(f"Nombre: {cliente[1]}")
+
+                print(f"RFC: {cliente[2]}")
+
+                print(f"Correo: {cliente[3]}")
+
+
+
+                confirmacion = input("¿Está seguro de que desea cancelar este cliente? (S/N): ").strip().upper()
+
+
+
+                if confirmacion == 'S':
+
+                    cursor.execute("UPDATE Clientes SET status = 0 WHERE idcliente = ?", (clave_cliente,))
+
+                    conn.commit()
+
+                    print("El cliente ha sido cancelado exitosamente.")
+
+                else:
+
+                    print("La cancelación del cliente ha sido cancelada a solicitud del usuario.")
+
+            else:
+
+                print("El cliente no existe o ya está cancelado en el sistema.")
+
+
+
+        break
+
+
+
+def recuperar_cliente():
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute("SELECT idcliente, nombrecliente, rfccliente, correocliente FROM Clientes WHERE status = 0")
+
+        clientes_cancelados = cursor.fetchall()
+
+
+
+        if not clientes_cancelados:
+
+            print("No hay clientes cancelados para recuperar.")
+
+            return
+
+
+
+        print("Listado de clientes cancelados:")
+
+        print("Clave  |  Nombre  |  RFC  |  Correo")
+
+        for cliente in clientes_cancelados:
+
+            print(f"{cliente[0]:<6} | {cliente[1]} | {cliente[2]} | {cliente[3]}")
+
+
+
+        while True:
+
+            try:
+
+                clave_recuperar = int(input("Ingrese la clave del cliente que desea recuperar o 0 para cancelar: "))
+
+            except ValueError:
+
+                print("Error: La clave del cliente debe ser un número válido.")
+
+                continue
+
+
+
+            if clave_recuperar == 0:
+
+                print("Operación cancelada. No se recuperó ningún cliente.")
+
+                return
+
+            elif any(clave_recuperar == cliente[0] for cliente in clientes_cancelados):
+
+                cursor.execute("SELECT * FROM Clientes WHERE idcliente = ?", (clave_recuperar,))
+
+                cliente = cursor.fetchone()
+
+
+
+                print("\nDetalle del cliente a recuperar:")
+
+                print(f"Clave del cliente: {cliente[0]}")
+
+                print(f"Nombre: {cliente[1]}")
+
+                print(f"RFC: {cliente[2]}")
+
+                print(f"Correo: {cliente[3]}")
+
+
+
+                confirmacion = input("¿Está seguro de que desea recuperar este cliente? (S/N): ").strip().upper()
+
+
+
+                if confirmacion == 'S':
+
+                    cursor.execute("UPDATE Clientes SET status = 1 WHERE idcliente = ?", (clave_recuperar,))
+
+                    conn.commit()
+
+                    print("El cliente ha sido recuperado exitosamente.")
+
+                else:
+
+                    print("La recuperación del cliente ha sido cancelada a solicitud del usuario.")
+
+                break
+
+            else:
+
+                print("La clave ingresada no corresponde a un cliente cancelado en el sistema.")
+
+                break
+
+
+
+
+
+
+
+def listado_clientes():
+
+    while True:
+
+        print("\nListado de clientes registrados:")
+
+        print("1. Ordenado por clave")
+
+        print("2. Ordenado por nombre")
+
+        print("3. Volver al menú anterior")
+
+        opcion = input("Seleccione una opción: ")
+
+
+
+        if opcion == "1":  
+
+            ordenar_clientes_por_clave()
+
+        elif opcion == "2":  
+
+            ordenar_clientes_por_nombre()
+
+        elif opcion == "3": 
+
+            print("Volviendo al menú de consultas y reportes de clientes.")
+
+            break
+
+        else:
+
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+
+
+def ordenar_clientes_por_clave():
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+        try:
+
+            cursor.execute("SELECT idcliente, nombrecliente, rfccliente, correocliente FROM Clientes WHERE status = 1 ORDER BY idcliente")
+
+            clientes = cursor.fetchall()
+
+            if clientes:
+
+                print("\nListado de clientes activos ordenado por clave:")
+
+                for cliente in clientes:
+
+                    print(f"Clave: {cliente[0]}, Nombre: {cliente[1]}, RFC: {cliente[2]}, Correo: {cliente[3]}")
+
+
+
+                while True:
+
+                    opcion_exportar = input("\n¿Desea exportar el reporte a CSV, Excel o regresar al menú de reportes? (CSV/Excel/Regresar): ").strip().lower()
+
+                    if opcion_exportar == "csv":
+
+                        exportar_reporte_clientes_csv(clientes, "ClientesActivosPorClave")
+
+                        break
+
+                    elif opcion_exportar == "excel":
+
+                        exportar_reporte_clientes_excel(clientes, "ClientesActivosPorClave")
+
+                        break
+
+                    elif opcion_exportar == "regresar":
+
+                        break
+
+                    else:
+
+                        print("Opción no válida. Por favor, seleccione una opción válida.")
+
+            else:
+
+                print("No hay clientes activos registrados.")
+
+        except sqlite3.Error as e:
+
+            print(f"Error al obtener el listado de clientes: {e}")
+
+
+
+def exportar_reporte_clientes_csv(data, report_name):
+
+    filename = f"{report_name}_{obtener_fecha_actual()}.csv"
+
+    with open(filename, mode='w', newline='') as file:
+
+        writer = csv.writer(file)
+
+        writer.writerow(["Clave", "Nombre", "RFC", "Correo"])
+
+        for cliente in data:
+
+            writer.writerow(cliente)
+
+    print(f"El reporte ha sido exportado como {filename}")
+
+
+
+def exportar_reporte_clientes_excel(data, report_name):
+
+    filename = f"{report_name}_{obtener_fecha_actual()}.xlsx"
+
+    workbook = openpyxl.Workbook()
+
+    worksheet = workbook.active
+
+    worksheet.title = report_name
+
+
+
+    bold = openpyxl.styles.Font(bold=True)
+
+    bold_style = openpyxl.styles.NamedStyle(name="bold")
+
+    bold_style.font = bold
+
+
+
+    worksheet['A1'] = "Clave"
+
+    worksheet['B1'] = "Nombre"
+
+    worksheet['C1'] = "RFC"
+
+    worksheet['D1'] = "Correo"
+
+
+
+    worksheet['A1'].style = bold_style
+
+    worksheet['B1'].style = bold_style
+
+    worksheet['C1'].style = bold_style
+
+    worksheet['D1'].style = bold_style
+
+
+
+    row = 2
+
+
+
+    for cliente in data:
+
+        worksheet.cell(row=row, column=1, value=cliente[0])
+
+        worksheet.cell(row=row, column=2, value=cliente[1])
+
+        worksheet.cell(row=row, column=3, value=cliente[2])
+
+        worksheet.cell(row=row, column=4, value=cliente[3])
+
+        row += 1
+
+
+
+    workbook.save(filename)
+
+
+
+    print(f"El reporte ha sido exportado como {filename}")
+
+
+
+def obtener_fecha_actual():
+
+    fecha_actual = datetime.datetime.now()
+
+    return fecha_actual.strftime("%m_%d_%Y")
+
+
+
+def ordenar_clientes_por_nombre():
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+        try:
+
+            cursor.execute("SELECT idcliente, nombrecliente, rfccliente, correocliente FROM Clientes WHERE status=1 ORDER BY UPPER(nombrecliente)")
+
+            clientes = cursor.fetchall()
+
+            if clientes:
+
+                print("\nListado de clientes ordenado por nombre:")
+
+                for cliente in clientes:
+
+                    print(f"Clave: {cliente[0]}, Nombre: {cliente[1]}, RFC: {cliente[2]}, Correo: {cliente[3]}")
+
+
+
+                while True:
+
+                    opcion_exportar = input("\n¿Desea exportar el reporte a CSV, Excel o regresar al menú de reportes? (CSV/Excel/Regresar): ").strip().lower()
+
+                    if opcion_exportar == "csv":
+
+                        exportar_reporte_clientes_csv(clientes, "ClientesPorNombre")
+
+                        break
+
+                    elif opcion_exportar == "excel":
+
+                        exportar_reporte_clientes_excel(clientes, "ClientesPorNombre")
+
+                        break
+
+                    elif opcion_exportar == "regresar":
+
+                        break
+
+                    else:
+
+                        print("Opción no válida. Por favor, seleccione una opción válida.")
+
+            else:
+
+                print("No hay clientes registrados.")
+
+        except sqlite3.Error as e:
+
+            print(f"Error al obtener el listado de clientes: {e}")
+
+
+
+
+
+
+
+
+
+def Servicios():
+
+    while True:
+
+        mostrar_menu_servicios()
+
+        opcion = input("Seleccione una opción: ")
+
+        if opcion == "1":
+
+            agregar_servicio()
+
+        elif opcion == "2":
+
+            consultasreportes_servicios()
+
+        elif opcion == "3":
+
+            cancelar_servicio()
+
+        elif opcion == "4":
+
+            recuperar_servicio()
+
+        elif opcion == "5":
+
+            print("Volviendo al menú principal.")
+
+            break
+
+        else:
+
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+
+
+
+
+def agregar_servicio():
+
+    while True:
+
+        nombre = input("Ingrese el nombre del servicio: ")
+
+        if nombre.strip():  
+
+            break
+
+        else:
+
+            print("El nombre no puede estar en blanco. Por favor, ingréselo nuevamente.")
+
+    
+
+    try:
+
+        costo = float(input("Ingrese el costo del servicio: "))
+
+    except ValueError:
+
+        print("El costo debe ser un número válido.")
+
+        return
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+        try:
+
+            cursor.execute("INSERT INTO Servicios (nombreservicio, costoservicio) VALUES (?, ?)", (nombre, costo))
+
+            conn.commit()
+
+            cursor.execute("SELECT idservicio FROM Servicios WHERE idservicio = (SELECT MAX(idservicio) FROM Servicios)")
+
+            claveservicio = cursor.fetchone()
+
+            print(f"Servicio agregado exitosamente con clave {claveservicio[0]}")
+
+        except Exception as e:
+
+            print(f"Error al agregar el servicio: {e}")
+
+
+
+def cancelar_servicio():
+
+    while True:
+
+        try:
+
+            clave_servicio = int(input("Ingrese la clave del servicio que desea cancelar: "))
+
+        except ValueError:
+
+            print("Error: La clave del servicio debe ser un número válido.")
+
+            continue
+
+
+
+        with sqlite3.connect("taller.db") as conn:
+
+            cursor = conn.cursor()
+
+
+
+            cursor.execute("SELECT * FROM Servicios WHERE idservicio = ? AND status = 1", (clave_servicio,))
+
+            servicio = cursor.fetchone()
+
+
+
+            if servicio:
+
+                print("Detalle del servicio a cancelar:")
+
+                print(f"Clave del servicio: {servicio[0]}")
+
+                print(f"Nombre: {servicio[1]}")
+
+                print(f"Costo: {servicio[2]:.2f}")
+
+
+
+                confirmacion = input("¿Está seguro de que desea cancelar este servicio? (S/N): ").strip().upper()
+
+
+
+                if confirmacion == 'S':
+
+                    cursor.execute("UPDATE Servicios SET status = 0 WHERE idservicio = ?", (clave_servicio,))
+
+                    conn.commit()
+
+                    print("El servicio ha sido cancelado exitosamente.")
+
+                else:
+
+                    print("La cancelación del servicio ha sido cancelada a solicitud del usuario.")
+
+            else:
+
+                print("El servicio no existe o ya está cancelado en el sistema.")
+
+
+
+        break
+
+
+
+def recuperar_servicio():
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE status = 0")
+
+        servicios_cancelados = cursor.fetchall()
+
+
+
+        if not servicios_cancelados:
+
+            print("No hay servicios cancelados para recuperar.")
+
+            return
+
+
+
+        print("Listado de servicios cancelados:")
+
+        print("Clave  |  Nombre  |  Costo")
+
+        for servicio in servicios_cancelados:
+
+            print(f"{servicio[0]:<6} | {servicio[1]} | {servicio[2]:.2f}")
+
+
+
+        while True:
+
+            try:
+
+                clave_recuperar = int(input("Ingrese la clave del servicio que desea recuperar o 0 para cancelar: "))
+
+            except ValueError:
+
+                print("Error: La clave del servicio debe ser un número válido.")
+
+                continue
+
+
+
+            if clave_recuperar == 0:
+
+                print("Operación cancelada. No se recuperó ningún servicio.")
+
+                return
+
+            elif any(clave_recuperar == servicio[0] for servicio in servicios_cancelados):
+
+                cursor.execute("SELECT * FROM Servicios WHERE idservicio = ?", (clave_recuperar,))
+
+                servicio = cursor.fetchone()
+
+
+
+                print("\nDetalle del servicio a recuperar:")
+
+                print(f"Clave del servicio: {servicio[0]}")
+
+                print(f"Nombre: {servicio[1]}")
+
+                print(f"Costo: {servicio[2]:.2f}")
+
+
+
+                confirmacion = input("¿Está seguro de que desea recuperar este servicio? (S/N): ").strip().upper()
+
+
+
+                if confirmacion == 'S':
+
+                    cursor.execute("UPDATE Servicios SET status = 1 WHERE idservicio = ?", (clave_recuperar,))
+
+                    conn.commit()
+
+                    print("El servicio ha sido recuperado exitosamente.")
+
+                else:
+
+                    print("La recuperación del servicio ha sido cancelada a solicitud del usuario.")
+
+                break
+
+            else:
+
+                print("La clave ingresada no corresponde a un servicio cancelado en el sistema.")
+
+
+
+
+
+
+
+def consultasreportes_servicios():
+
+    while True:
+
+        print("1. Búsqueda por clave de servicio")
+
+        print("2. Búsqueda por nombre de servicio")
+
+        print("3. Listado de servicios")
+
+        print("4. Salir al menú Servicios")
+
+        opcion = input("Seleccione una opción: ")
+
+        if opcion == "1":   
+
+            Busqueda_clave_servicio()
+
+        elif opcion == "2":  
+
+            Busqueda_nombre_servicio()
+
+        elif opcion == "3":  
+
+            Listado_servicios()
+
+        elif opcion == "4":  
+
+            print("Saliendo del programa. ¡Hasta luego!")
+
+            break
+
+        else:
+
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+
+
+def Busqueda_clave_servicio():
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+        try:
+
+            cursor.execute("SELECT idservicio, nombreservicio FROM Servicios WHERE status = 1")
+
+            servicios = cursor.fetchall()
+
+
+
+            if not servicios:
+
+                print("No hay servicios registrados en la base de datos.")
+
+                return
+
+
+
+            print("Listado de servicios:")
+
+            print("Clave  |  Nombre del Servicio")
+
+            for servicio in servicios:
+
+                print(f"{servicio[0]:<6} | {servicio[1]}")
+
+
+
+            while True:
+
+                try:
+
+                    clave_servicio = int(input("Ingrese la clave del servicio que desea consultar: "))
+
+                    if clave_servicio in [servicio[0] for servicio in servicios]:
+
+                        break
+
+                    else:
+
+                        print("Clave no válida. Por favor, ingrese una clave válida.")
+
+                except ValueError:
+
+                    print("Error: La clave debe ser un número válido.")
+
+
+
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE idservicio = ?", (clave_servicio,))
+
+            servicio_detalle = cursor.fetchone()
+
+
+
+            print("\nDetalle del servicio:")
+
+            print(f"Clave del Servicio: {servicio_detalle[0]}")
+
+            print(f"Nombre del Servicio: {servicio_detalle[1]}")
+
+            print(f"Costo del Servicio: {servicio_detalle[2]:.2f}")
+
+
+
+        except sqlite3.Error as e:
+
+            print(f"Error al buscar el servicio: {e}")
+
+
+
+def Busqueda_nombre_servicio():
+
+    with sqlite3.connect("taller.db") as conn:
+
+        cursor = conn.cursor()
+
+        try:
+
+            nombre_servicio_buscar = input("Ingrese el nombre del servicio a buscar: ").strip().lower()
+
+
+
+            cursor.execute("SELECT idservicio, nombreservicio, costoservicio FROM Servicios WHERE LOWER(nombreservicio) = ?", (nombre_servicio_buscar,))
+
+            servicio_detalle = cursor.fetchone()
+
+
+
+            if servicio_detalle:
+
+                print("\nDetalle del servicio encontrado:")
+
+                print(f"Clave del Servicio: {servicio_detalle[0]}")
+
+                print(f"Nombre del Servicio: {servicio_detalle[1]}")
+
+                print(f"Costo del Servicio: {servicio_detalle[2]:.2f}")
+
+            else:
+
+                print(f"No se encontró un servicio con el nombre '{nombre_servicio_buscar}'.")
+
+
+
+        except sqlite3.Error as e:
+
+            print(f"Error al buscar el servicio: {e}")
+
